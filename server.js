@@ -14,6 +14,9 @@ const {
   AIRTABLE_TABLE_ID,
   AVINODE_TOKEN,
   INQUIRE_ALL = 'false',
+  DEFAULT_CONTACT_NAME = 'Legacy Aviation',
+  DEFAULT_CONTACT_EMAIL = 'flight-ops@legacyaviationgroup.com',
+  DEFAULT_CONTACT_PHONE = '+1 646 801 5387',
 } = process.env;
 
 for (const [k, v] of Object.entries({ WEBHOOK_SECRET, AIRTABLE_PAT, AIRTABLE_BASE_ID, AIRTABLE_TABLE_ID, AVINODE_TOKEN })) {
@@ -61,9 +64,9 @@ function recordToQuote(rec) {
     date: iso(f['Departure Date/Time']),
     pax: Number(f['Pax Count'] || 2),
     contact: {
-      name: f['Client'] || f['Contact First Name'] || 'Legacy Aviation',
-      email: f['Contact Email'] || '',
-      phone: f['Contact Phone'] || '',
+      name: f['Client'] || f['Contact First Name'] || DEFAULT_CONTACT_NAME,
+      email: f['Contact Email'] || DEFAULT_CONTACT_EMAIL,
+      phone: f['Contact Phone'] || DEFAULT_CONTACT_PHONE,
       message: f['Trip Notes'] || `Charter quote request for ${f['Client'] || 'client'}.`,
     },
   };
