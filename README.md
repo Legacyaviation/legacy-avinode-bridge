@@ -1,4 +1,4 @@
-# PMG Avinode Bridge
+# Legacy Aviation Avinode Bridge
 
 Webhook-triggered service that sends Avinode RFQs when an Airtable record's `Status` flips to `Send to Avinode`. Uses Playwright to drive the Avinode embed as a logged-in human would.
 

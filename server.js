@@ -61,7 +61,7 @@ function recordToQuote(rec) {
     date: iso(f['Departure Date/Time']),
     pax: Number(f['Pax Count'] || 2),
     contact: {
-      name: f['Client'] || f['Contact First Name'] || 'PMG',
+      name: f['Client'] || f['Contact First Name'] || 'Legacy Aviation',
       email: f['Contact Email'] || '',
       phone: f['Contact Phone'] || '',
       message: f['Trip Notes'] || `Charter quote request for ${f['Client'] || 'client'}.`,
@@ -88,7 +88,7 @@ app.post('/fire', async (req, res) => {
         inquireAllClasses: INQUIRE_ALL === 'true',
       });
       const fields = result.ok && result.sends.some(s => s.sent)
-        ? { 'Status': 'Sent', 'Last Updated': new Date().toISOString().slice(0, 10) }
+        ? { 'Status': 'Pending', 'Last Updated': new Date().toISOString().slice(0, 10) }
         : { 'Status': 'Error', 'Last Updated': new Date().toISOString().slice(0, 10) };
       await patchRecord(recordId, fields).catch(e => console.error(`[${recordId}] patch failed: ${e.message}`));
       console.log(`[${recordId}] done in ${Date.now() - started}ms — ${JSON.stringify(result)}`);

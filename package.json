@@ -1,5 +1,5 @@
 {
-  "name": "pmg-avinode-bridge",
+  "name": "legacy-avinode-bridge",
   "version": "1.0.0",
   "description": "Webhook-triggered Avinode RFQ sender driven by Airtable automations",
   "main": "server.js",
