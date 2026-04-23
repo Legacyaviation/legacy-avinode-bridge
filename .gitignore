@@ -6,3 +6,6 @@ node_modules/
 /tmp
 /screenshots
 package-lock.json
+send-quote.js
+explore.js
+index.html
