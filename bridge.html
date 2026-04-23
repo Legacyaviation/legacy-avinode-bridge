@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Avinode Bridge</title></head>
+<body style="margin:0;padding:0">
+  <div id="avinodeApp"></div>
+  <script>
+    // Token injected server-side at request time.
+    const s = document.createElement('script');
+    s.src = 'https://apps.avinode.com/webapp/rest/bootstrap?Avinode-WEB-APP={{AVINODE_TOKEN}}';
+    s.async = true;
+    document.body.appendChild(s);
+  </script>
+</body>
+</html>

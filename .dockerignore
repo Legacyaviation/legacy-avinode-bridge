@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+*.log
+/tmp
+index.html
+send-quote.js
+explore.js
+.claude
