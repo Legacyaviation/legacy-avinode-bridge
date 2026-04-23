@@ -5,7 +5,6 @@ node_modules/
 .DS_Store
 /tmp
 /screenshots
-package-lock.json
 send-quote.js
 explore.js
 index.html
