@@ -59,6 +59,8 @@ async function setDate(page, isoDate) {
 
 async function fireQuote(q, opts = {}) {
   const { bridgeUrl = 'http://localhost:3000/bridge', headless = true, inquireAllClasses = false } = opts;
+  const tag = (q.from || '??') + '→' + (q.to || '??');
+  const log = (m) => console.log(`  [fire:${tag}] ${m}`);
   const browser = await chromium.launch({ headless, args: ['--no-sandbox'] });
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 } });
   const page = await ctx.newPage();
@@ -66,54 +68,91 @@ async function fireQuote(q, opts = {}) {
   page.on('pageerror', e => pageErrors.push(e.message));
 
   try {
+    log(`goto ${bridgeUrl}`);
     await page.goto(bridgeUrl, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForSelector('#avinodeSearchForm', { timeout: 15000 });
     await page.waitForTimeout(3500);
 
     const search = page.frameLocator('#avinodeSearchForm');
     await search.locator('select.currency-selector-input').selectOption('USD').catch(() => {});
+    log('currency=USD');
 
-    await pickAirport(page, 'from', q.from);
-    await pickAirport(page, 'to', q.to);
-    await setDate(page, q.date);
-    await setPax(page, q.pax);
+    await pickAirport(page, 'from', q.from); log(`from=${q.from} picked`);
+    await pickAirport(page, 'to', q.to); log(`to=${q.to} picked`);
+    await setDate(page, q.date); log(`date=${q.date} set`);
+    await setPax(page, q.pax); log(`pax=${q.pax} set`);
 
-    // Dismiss any popover before Search
+    // Verify form state before search
+    const preSearch = {
+      start: await search.locator('input[name="startAirport"]').inputValue().catch(() => 'ERR'),
+      end: await search.locator('input[name="endAirport"]').inputValue().catch(() => 'ERR'),
+      date: await search.locator('input[name="date"]').inputValue().catch(() => 'ERR'),
+      pax: await search.locator('input[name="paxCount"]').inputValue().catch(() => 'ERR'),
+    };
+    log(`pre-search values: ${JSON.stringify(preSearch)}`);
+
     await page.mouse.click(10, 10);
     await page.waitForTimeout(400);
 
+    log('clicking Search');
     await search.locator('button.search-form__submit, button:has-text("Search")').first().click({ force: true });
-    await page.waitForTimeout(4500);
+    await page.waitForTimeout(6000);
 
     const inquireCount = await search.locator('button:has-text("Inquire")').count();
-    if (!inquireCount) throw new Error('no Inquire buttons after Search');
+    log(`inquire buttons visible: ${inquireCount}`);
+    if (!inquireCount) {
+      const body = await search.locator('body').innerText().catch(() => '');
+      log(`no inquires — body snippet: ${body.replace(/\s+/g, ' ').slice(0, 300)}`);
+      throw new Error('no Inquire buttons after Search');
+    }
 
     const targets = inquireAllClasses ? inquireCount : 1;
     const sends = [];
     for (let i = 0; i < targets; i++) {
-      // Re-query each time — the DOM may have shifted after previous send
       const btns = await search.locator('button:has-text("Inquire")').all();
-      if (!btns[i]) break;
+      if (!btns[i]) { log(`no button at index ${i}`); break; }
+      log(`clicking Inquire[${i}]`);
       await btns[i].click({ force: true });
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(3000);
 
-      await search.locator('input[name="name"]').fill(q.contact.name);
+      // Verify the contact form appeared
+      const nameField = search.locator('input[name="name"]');
+      const nameVisible = await nameField.count();
+      log(`name field count after Inquire click: ${nameVisible}`);
+      if (!nameVisible) {
+        const body = await search.locator('body').innerText().catch(() => '');
+        log(`no name field — body snippet: ${body.replace(/\s+/g, ' ').slice(0, 300)}`);
+        sends.push({ index: i, sent: false, error: 'contact form never opened' });
+        break;
+      }
+
+      await nameField.fill(q.contact.name);
       await search.locator('input[name="email"]').fill(q.contact.email);
       if (q.contact.phone) await search.locator('input[name="phoneNumber"]').fill(q.contact.phone);
       await search.locator('input[name="message"]').fill(q.contact.message || '');
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(500);
 
+      const filled = {
+        name: await nameField.inputValue().catch(() => ''),
+        email: await search.locator('input[name="email"]').inputValue().catch(() => ''),
+        phone: await search.locator('input[name="phoneNumber"]').inputValue().catch(() => ''),
+      };
+      log(`filled: ${JSON.stringify(filled)}`);
+
+      log('clicking Send inquiry');
       await search.locator('button:has-text("Send inquiry")').click({ force: true });
-      await page.waitForTimeout(5000);
+      await page.waitForTimeout(6000);
 
       const confirmText = await search.locator('body').innerText().catch(() => '');
       const sent = /inquiry sent/i.test(confirmText);
+      log(`sent=${sent} · snippet: ${confirmText.replace(/\s+/g, ' ').slice(0, 200)}`);
       sends.push({ index: i, sent, snippet: confirmText.replace(/\s+/g, ' ').slice(0, 200) });
       if (!sent) break;
     }
 
     return { ok: true, sends, pageErrors };
   } catch (e) {
+    log(`EXCEPTION: ${e.message}`);
     return { ok: false, error: e.message, pageErrors };
   } finally {
     await browser.close();
