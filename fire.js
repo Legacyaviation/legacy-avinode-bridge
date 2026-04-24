@@ -106,17 +106,17 @@ async function fireQuote(q, opts = {}) {
       throw new Error('no Inquire buttons after Search');
     }
 
-    // Scrape each result card's heading/category label so we can pick the one matching q.aircraftCategory
+    // Scrape each result card's heading/category label so we can pick the one matching q.aircraftCategory.
+    // Walk up until we hit a container large enough to include the category heading — don't stop at the price block.
     const cards = await search.locator('button:has-text("Inquire")').evaluateAll(btns =>
       btns.map((b, i) => {
-        // walk up to the containing aircraft card
-        let el = b, depth = 0;
-        while (el && depth < 8) {
+        let el = b, depth = 0, best = '';
+        while (el && depth < 12) {
           const text = (el.innerText || '').trim();
-          if (text.length > 20 && text.length < 400) return { index: i, text: text.replace(/\s+/g, ' ') };
+          if (text.length > 60 && text.length < 2000) best = text;  // keep last/widest match
           el = el.parentElement; depth++;
         }
-        return { index: i, text: (b.innerText || '').trim().replace(/\s+/g, ' ') };
+        return { index: i, text: (best || (b.innerText || '').trim()).replace(/\s+/g, ' ') };
       })
     );
     log(`result cards: ${JSON.stringify(cards.map(c => ({ i: c.index, text: c.text.slice(0, 90) })))}`);
