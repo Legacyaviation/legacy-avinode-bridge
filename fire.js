@@ -126,11 +126,13 @@ async function fireQuote(q, opts = {}) {
     // Match record's Aircraft Category to a card (case-insensitive substring, flexible)
     const wanted = (q.aircraftCategory || '').toLowerCase().replace(/\s+/g, '');
     // Needles must be specific enough to NOT substring-match "flight time" (appears in every card) or other generic text.
+    // Avinode's actual result categories are: Turbo prop, Light jet, Midsize jet, Heavy jet, LAG Categories.
+    // Airtable's "Super Light" and "Super Mid Jet" have no direct Avinode card — fall through to nearest family.
     const aliases = {
       'lightjet': ['light jet'],
-      'superlight': ['super light', 'superlight'],
+      'superlight': ['super light', 'light jet'],        // fall back to Light jet
       'midjet': ['midsize jet', 'mid jet', 'midjet'],
-      'supermidjet': ['super mid jet', 'super midsize'],
+      'supermidjet': ['super mid jet', 'super midsize', 'midsize jet'],  // fall back to Midsize
       'heavyjet': ['heavy jet'],
       'ultralongrange': ['lag categories', 'ultra long', 'long range'],
       'turboprop': ['turbo prop', 'turboprop'],
