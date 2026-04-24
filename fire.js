@@ -125,13 +125,15 @@ async function fireQuote(q, opts = {}) {
 
     // Match record's Aircraft Category to a card (case-insensitive substring, flexible)
     const wanted = (q.aircraftCategory || '').toLowerCase().replace(/\s+/g, '');
+    // Needles must be specific enough to NOT substring-match "flight time" (appears in every card) or other generic text.
     const aliases = {
-      'lightjet': ['light jet', 'light'],
-      'superlight': ['super light', 'super-light', 'superlight'],
-      'midjet': ['midsize jet', 'mid jet', 'midjet', 'midsize'],
-      'supermidjet': ['super mid', 'super-mid', 'supermid'],
-      'heavyjet': ['heavy jet', 'heavy'],
-      'ultralongrange': ['ultra long', 'long range', 'lag'],
+      'lightjet': ['light jet'],
+      'superlight': ['super light', 'superlight'],
+      'midjet': ['midsize jet', 'mid jet', 'midjet'],
+      'supermidjet': ['super mid jet', 'super midsize'],
+      'heavyjet': ['heavy jet'],
+      'ultralongrange': ['lag categories', 'ultra long', 'long range'],
+      'turboprop': ['turbo prop', 'turboprop'],
     };
     const needles = aliases[wanted] || (q.aircraftCategory ? [q.aircraftCategory.toLowerCase()] : []);
     log(`wanted category="${q.aircraftCategory}" needles=${JSON.stringify(needles)}`);
