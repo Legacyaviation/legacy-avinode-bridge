@@ -63,6 +63,7 @@ function recordToQuote(rec) {
     to: (f['Arrival Airport'] || '').trim().toUpperCase(),
     date: iso(f['Departure Date/Time']),
     pax: Number(f['Pax Count'] || 2),
+    aircraftCategory: f['Aircraft Category'] || '',
     contact: {
       name: f['Client'] || f['Contact First Name'] || DEFAULT_CONTACT_NAME,
       email: f['Contact Email'] || DEFAULT_CONTACT_EMAIL,

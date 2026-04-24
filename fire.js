@@ -106,9 +106,45 @@ async function fireQuote(q, opts = {}) {
       throw new Error('no Inquire buttons after Search');
     }
 
+    // Scrape each result card's heading/category label so we can pick the one matching q.aircraftCategory
+    const cards = await search.locator('button:has-text("Inquire")').evaluateAll(btns =>
+      btns.map((b, i) => {
+        // walk up to the containing aircraft card
+        let el = b, depth = 0;
+        while (el && depth < 8) {
+          const text = (el.innerText || '').trim();
+          if (text.length > 20 && text.length < 400) return { index: i, text: text.replace(/\s+/g, ' ') };
+          el = el.parentElement; depth++;
+        }
+        return { index: i, text: (b.innerText || '').trim().replace(/\s+/g, ' ') };
+      })
+    );
+    log(`result cards: ${JSON.stringify(cards.map(c => ({ i: c.index, text: c.text.slice(0, 90) })))}`);
+
+    // Match record's Aircraft Category to a card (case-insensitive substring, flexible)
+    const wanted = (q.aircraftCategory || '').toLowerCase().replace(/\s+/g, '');
+    const aliases = {
+      'lightjet': ['light jet', 'light'],
+      'superlight': ['super light', 'super-light', 'superlight'],
+      'midjet': ['midsize jet', 'mid jet', 'midjet', 'midsize'],
+      'supermidjet': ['super mid', 'super-mid', 'supermid'],
+      'heavyjet': ['heavy jet', 'heavy'],
+      'ultralongrange': ['ultra long', 'long range', 'lag'],
+    };
+    const needles = aliases[wanted] || (q.aircraftCategory ? [q.aircraftCategory.toLowerCase()] : []);
+    log(`wanted category="${q.aircraftCategory}" needles=${JSON.stringify(needles)}`);
+
+    let pickedIndex = 0;
+    if (needles.length) {
+      const match = cards.find(c => needles.some(n => c.text.toLowerCase().includes(n)));
+      if (match) { pickedIndex = match.index; log(`matched card[${pickedIndex}]: ${match.text.slice(0,80)}`); }
+      else log(`WARN no card matched — falling back to index 0`);
+    }
+
     const targets = inquireAllClasses ? inquireCount : 1;
     const sends = [];
-    for (let i = 0; i < targets; i++) {
+    for (let k = 0; k < targets; k++) {
+      const i = inquireAllClasses ? k : pickedIndex;
       const btns = await search.locator('button:has-text("Inquire")').all();
       if (!btns[i]) { log(`no button at index ${i}`); break; }
       log(`clicking Inquire[${i}]`);
