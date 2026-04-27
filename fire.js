@@ -123,19 +123,21 @@ async function fireQuote(q, opts = {}) {
     );
     log(`result cards: ${JSON.stringify(cards.map(c => ({ i: c.index, text: c.text.slice(0, 90) })))}`);
 
-    // Match record's Aircraft Category to a card (case-insensitive substring, flexible)
-    const wanted = (q.aircraftCategory || '').toLowerCase().replace(/\s+/g, '');
-    // Needles must be specific enough to NOT substring-match "flight time" (appears in every card) or other generic text.
-    // Avinode's actual result categories are: Turbo prop, Light jet, Midsize jet, Heavy jet, LAG Categories.
-    // Airtable's "Super Light" and "Super Mid Jet" have no direct Avinode card — fall through to nearest family.
+    // Match Aircraft Category to a card. Airtable now mirrors Avinode's taxonomy 1:1
+    // (Turbo prop · Entry level jet (VLJ) · Light jet · Super light jet · Midsize jet · Super midsize jet · Heavy jet · Ultra long range).
+    // Strip non-letters for the lookup key so parens don't break matching.
+    const wanted = (q.aircraftCategory || '').toLowerCase().replace(/[^a-z]/g, '');
+    // Each entry lists needles in priority order — first matching card wins.
+    // Fallbacks step up to the nearest larger family when Avinode's results page omits a sub-category.
     const aliases = {
-      'lightjet': ['light jet'],
-      'superlight': ['super light', 'light jet'],        // fall back to Light jet
-      'midjet': ['midsize jet', 'mid jet', 'midjet'],
-      'supermidjet': ['super mid jet', 'super midsize', 'midsize jet'],  // fall back to Midsize
-      'heavyjet': ['heavy jet'],
-      'ultralongrange': ['lag categories', 'ultra long', 'long range'],
-      'turboprop': ['turbo prop', 'turboprop'],
+      'turboprop':        ['turbo prop'],
+      'entryleveljetvlj': ['entry level jet', 'vlj', 'light jet'],
+      'lightjet':         ['light jet'],
+      'superlightjet':    ['super light jet', 'light jet'],
+      'midsizejet':       ['midsize jet'],
+      'supermidsizejet':  ['super midsize jet', 'midsize jet'],
+      'heavyjet':         ['heavy jet'],
+      'ultralongrange':   ['ultra long range', 'lag categories'],
     };
     const needles = aliases[wanted] || (q.aircraftCategory ? [q.aircraftCategory.toLowerCase()] : []);
     log(`wanted category="${q.aircraftCategory}" needles=${JSON.stringify(needles)}`);
