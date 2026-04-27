@@ -123,39 +123,37 @@ async function fireQuote(q, opts = {}) {
     );
     log(`result cards: ${JSON.stringify(cards.map(c => ({ i: c.index, text: c.text.slice(0, 90) })))}`);
 
-    // Match Aircraft Category to a card. Airtable now mirrors Avinode's taxonomy 1:1
-    // (Turbo prop · Entry level jet (VLJ) · Light jet · Super light jet · Midsize jet · Super midsize jet · Heavy jet · Ultra long range).
-    // Strip non-letters for the lookup key so parens don't break matching.
+    // Match Aircraft Category to a card. STRICT MODE: exact category match required, no step-up fallbacks.
+    // If Avinode doesn't show the requested category for this route, we write Status=Error so a human can intervene.
     const wanted = (q.aircraftCategory || '').toLowerCase().replace(/[^a-z]/g, '');
-    // Each entry lists needles in priority order — first matching card wins.
-    // Fallbacks step up to the nearest larger family when Avinode's results page omits a sub-category.
     const aliases = {
       'turboprop':        ['turbo prop'],
-      'entryleveljetvlj': ['entry level jet', 'vlj', 'light jet'],
+      'entryleveljetvlj': ['entry level jet'],
       'lightjet':         ['light jet'],
-      'superlightjet':    ['super light jet', 'light jet'],
+      'superlightjet':    ['super light jet'],
       'midsizejet':       ['midsize jet'],
-      'supermidsizejet':  ['super midsize jet', 'midsize jet'],
+      'supermidsizejet':  ['super midsize jet'],
       'heavyjet':         ['heavy jet'],
-      'ultralongrange':   ['ultra long range', 'lag categories'],
+      'ultralongrange':   ['ultra long range', 'lag categories'], // same category, two labels Avinode uses
     };
     const needles = aliases[wanted] || (q.aircraftCategory ? [q.aircraftCategory.toLowerCase()] : []);
     log(`wanted category="${q.aircraftCategory}" needles=${JSON.stringify(needles)}`);
 
     // Each card's text begins with its category heading (e.g. "Light jethelp_outline person5-10 Est. flight time...").
-    // Use startsWith() so "light jet" doesn't substring-match "super light jet" (those start with "super").
-    // Iterate needles in priority order so the primary match wins; fallback needles only fire if primary card missing.
-    let pickedIndex = 0;
-    if (needles.length) {
-      let match;
-      for (const n of needles) {
-        const lc = n.toLowerCase();
-        match = cards.find(c => c.text.toLowerCase().startsWith(lc));
-        if (match) { log(`matched card[${match.index}] via "${n}": ${match.text.slice(0,80)}`); break; }
-      }
-      if (match) pickedIndex = match.index;
-      else log(`WARN no card matched any of ${JSON.stringify(needles)} — falling back to index 0`);
+    // STRICT exact match: card text must start with one of the needles for the requested category.
+    // No fallbacks — if no card matches, throw so the server writes Status=Error.
+    if (!needles.length) throw new Error(`no aliases configured for category "${q.aircraftCategory}"`);
+    let match;
+    for (const n of needles) {
+      const lc = n.toLowerCase();
+      match = cards.find(c => c.text.toLowerCase().startsWith(lc));
+      if (match) { log(`matched card[${match.index}] via "${n}": ${match.text.slice(0,80)}`); break; }
     }
+    if (!match) {
+      const visible = cards.map(c => c.text.split(/help_outline|person\s*\d/i)[0].trim()).filter(Boolean).join(', ');
+      throw new Error(`Avinode showed no "${q.aircraftCategory}" card for ${q.from}→${q.to} ${q.date}. Available: ${visible || '(none)'}`);
+    }
+    const pickedIndex = match.index;
 
     const targets = inquireAllClasses ? inquireCount : 1;
     const sends = [];
