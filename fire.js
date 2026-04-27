@@ -142,11 +142,19 @@ async function fireQuote(q, opts = {}) {
     const needles = aliases[wanted] || (q.aircraftCategory ? [q.aircraftCategory.toLowerCase()] : []);
     log(`wanted category="${q.aircraftCategory}" needles=${JSON.stringify(needles)}`);
 
+    // Each card's text begins with its category heading (e.g. "Light jethelp_outline person5-10 Est. flight time...").
+    // Use startsWith() so "light jet" doesn't substring-match "super light jet" (those start with "super").
+    // Iterate needles in priority order so the primary match wins; fallback needles only fire if primary card missing.
     let pickedIndex = 0;
     if (needles.length) {
-      const match = cards.find(c => needles.some(n => c.text.toLowerCase().includes(n)));
-      if (match) { pickedIndex = match.index; log(`matched card[${pickedIndex}]: ${match.text.slice(0,80)}`); }
-      else log(`WARN no card matched — falling back to index 0`);
+      let match;
+      for (const n of needles) {
+        const lc = n.toLowerCase();
+        match = cards.find(c => c.text.toLowerCase().startsWith(lc));
+        if (match) { log(`matched card[${match.index}] via "${n}": ${match.text.slice(0,80)}`); break; }
+      }
+      if (match) pickedIndex = match.index;
+      else log(`WARN no card matched any of ${JSON.stringify(needles)} — falling back to index 0`);
     }
 
     const targets = inquireAllClasses ? inquireCount : 1;

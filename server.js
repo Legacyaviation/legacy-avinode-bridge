@@ -92,7 +92,7 @@ app.post('/fire', async (req, res) => {
         inquireAllClasses: INQUIRE_ALL === 'true',
       });
       const fields = result.ok && result.sends.some(s => s.sent)
-        ? { 'Status': 'Pending', 'Last Updated': new Date().toISOString().slice(0, 10) }
+        ? { 'Status': 'Sent to Avinode', 'Last Updated': new Date().toISOString().slice(0, 10) }
         : { 'Status': 'Error', 'Last Updated': new Date().toISOString().slice(0, 10) };
       await patchRecord(recordId, fields).catch(e => console.error(`[${recordId}] patch failed: ${e.message}`));
       console.log(`[${recordId}] done in ${Date.now() - started}ms — ${JSON.stringify(result)}`);
